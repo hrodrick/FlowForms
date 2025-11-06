@@ -1,12 +1,13 @@
 plugins {
-    kotlin("multiplatform")
-    id("com.android.library")
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidLibrary)
 }
 
 fun flowFormsCoreProject() = project(":FlowForms-Core")
 
 kotlin {
-    android()
+    android {}
+    androidTarget()
 
     listOf(
         iosX64(),
@@ -26,41 +27,35 @@ kotlin {
     }
 
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 api(flowFormsCoreProject())
-                implementations(Dependencies.kotlinLibraries)
+                implementation(libs.kotlin.stdlib)
             }
         }
-        val commonTest by getting {
+        commonTest {
             dependencies {
-                implementation(kotlin("test"))
+                implementation(libs.kotlin.test)
             }
         }
-        val androidMain by getting {
+        androidMain {
             dependencies {
-                implementations(Dependencies.appLibraries)
+                implementation(libs.androidx.lifecycle.viewmodelCompose)
             }
         }
-        val androidTest by getting
-        val iosX64Main by getting
-        val iosArm64Main by getting
-        val iosSimulatorArm64Main by getting
-        val iosMain by creating {
-            dependsOn(commonMain)
-            iosX64Main.dependsOn(this)
-            iosArm64Main.dependsOn(this)
-            iosSimulatorArm64Main.dependsOn(this)
-        }
+        androidUnitTest { }
+        iosMain { }
+        iosX64Main {}
+        iosArm64Main {}
+        iosSimulatorArm64Main {}
     }
 }
 
 android {
     namespace = "com.rootstrap.flowforms.shared"
-    compileSdk = FlowFormsAndroidConfig.COMPILE_SDK
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
     defaultConfig {
-        minSdk = FlowFormsAndroidConfig.MIN_SDK
-        targetSdk = FlowFormsAndroidConfig.TARGET_SDK
+        minSdk = libs.versions.android.minSdk.get().toInt()
     }
 }
 
@@ -70,8 +65,4 @@ fun org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler.implementations(l
     list.forEach {
         implementation(it)
     }
-}
-
-task("testClasses").doLast {
-    println("This is a dummy testClasses task")
 }

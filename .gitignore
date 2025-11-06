@@ -18,5 +18,6 @@ local.properties
 /docs/_site/
 /shared/build
 /exampleappandroidcompose/build
+/.kotlin/metadata/
 
 ExampleApp iOS/flowForms.xcodeproj/project.xcworkspace

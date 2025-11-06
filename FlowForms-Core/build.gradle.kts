@@ -1,7 +1,12 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
-    kotlin("multiplatform")
-    id("org.jetbrains.kotlinx.kover") version "0.5.1"
-    id("com.android.library")
+    alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kover)
     `maven-publish`
 }
 
@@ -9,14 +14,12 @@ group = "com.rootstrap"
 version = "1.4.1"
 
 kotlin {
-    android {
-        publishLibraryVariants("release")
-    }
-    jvm {
-        testRuns["test"].executionTask.configure {
-            useJUnitPlatform()
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
         }
     }
+
     listOf(
         iosX64(),
         iosArm64(),
@@ -27,58 +30,71 @@ kotlin {
         }
     }
 
+    jvm {
+        testRuns["test"].executionTask.configure {
+            useJUnitPlatform()
+        }
+    }
+
+    js {
+        browser()
+    }
+
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
+
     sourceSets {
         all {
             languageSettings.optIn("kotlin.experimental.ExperimentalObjCName")
         }
-        val commonMain by getting {
+        commonMain.dependencies {
+            implementation(libs.kotlin.stdlib)
+            // put your Multiplatform dependencies here
+            api(libs.kermit.logging)
+            implementation(libs.kotlinx.datetime)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            api(libs.kermit.test)
+        }
+        jvmMain {}
+        jvmTest {
+            // TODO review these
             dependencies {
-                implementations(Dependencies.kotlinLibraries)
+                implementation(libs.kotlin.test)
+                implementation(libs.turbine)
+                implementation(libs.mockk)
             }
         }
-        val commonTest by getting
-        val jvmMain by getting
-        val jvmTest by getting {
+        androidMain {
             dependencies {
-                implementation(kotlin("test"))
-                implementations(Dependencies.commonTestLibraries)
+                implementation(libs.androidx.core.ktx)
+                implementation(libs.androidx.appcompat)
+                implementation(compose.material3)
+                implementation(libs.androidx.lifecycle.runtimeCompose)
             }
         }
-        val androidMain by getting {
-            dependencies {
-                implementations(Dependencies.flowFormsAndroidLibraries)
-            }
-        }
-        val androidTest by getting
-        val iosX64Main by getting
-        val iosArm64Main by getting
-        val iosSimulatorArm64Main by getting
-        val iosMain by creating {
-            dependsOn(commonMain)
-            iosX64Main.dependsOn(this)
-            iosArm64Main.dependsOn(this)
-            iosSimulatorArm64Main.dependsOn(this)
-        }
+        androidUnitTest { }
+        iosMain { }
+        iosX64Main {}
+        iosArm64Main {}
+        iosSimulatorArm64Main {}
     }
-}
-
-val rootPkg = "com.rootstrap.flowforms"
-
-tasks.koverMergedHtmlReport {
-    excludes = listOf(
-        "${rootPkg}.core.common.StatusCodes",
-        "${rootPkg}.util.*",
-        "${rootPkg}.core.BuildConfig"
-    )
 }
 
 android {
-    compileSdk = 33
+    namespace = "com.rootstrap.flowforms"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    defaultConfig {
-        minSdk = 23
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
-
+    defaultConfig {
+        minSdk = libs.versions.android.minSdk.get().toInt()
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -86,20 +102,9 @@ android {
     }
 }
 
-// utility functions
-
-fun org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler.implementations(list : List<String>) {
-    list.forEach {
-        implementation(it)
-    }
-}
-
+// Debugging utility
 tasks.withType<Test> {
     testLogging {
         showStandardStreams = true
     }
-}
-
-task("testClasses").doLast {
-    println("This is a dummy testClasses task")
 }
